@@ -76,15 +76,21 @@ class MyAI(Agent):
 
         # tough wall
         if bump:
+            self.__world_dimension = max(self.__agentX, self.__agentY)-1
             if self.__self_def_action_history_list[-1] == self.self_def_action.GO_UP:
                 self.__agentY -= 1
+                return self.self_def_action.GO_DOWN
             elif self.__self_def_action_history_list[-1] == self.self_def_action.GO_DOWN:
                 self.__agentY += 1
+                return self.self_def_action.GO_UP
             elif self.__self_def_action_history_list[-1] == self.self_def_action.GO_LEFT:
                 self.__agentX += 1
+                return self.self_def_action.GO_RIGHT
             elif self.__self_def_action_history_list[-1] == self.self_def_action.GO_RIGHT:
                 self.__agentX -= 1
-            self.__world_dimension = max(self.__agentX, self.__agentY)
+                return self.self_def_action.GO_LEFT
+
+
 
         if not bump:
             if self.__agentX not in self.__map:

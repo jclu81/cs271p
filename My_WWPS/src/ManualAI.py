@@ -20,6 +20,7 @@
 #
 #              - Don't make changes to this file.
 # ======================================================================
+
 from Agent import Agent
 
 class ManualAI ( Agent ):
