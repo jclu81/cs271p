@@ -67,6 +67,32 @@ class MyAI(Agent):
         if len(self.__future_action_list) > 0:
             return self.__future_action_list.pop(0)
 
+        # if stench or breeze:
+        #     self.__complete_game = True
+        #     self.return_exit()
+        #     if len(self.__future_action_list) == 0:
+        #         return Agent.Action.CLIMB
+        #     return self.__future_action_list.pop(0)
+
+
+        if glitter:
+            self.__gold_looted = True
+            self.__complete_game = True
+
+            # self.return_exit()
+            self.__future_action_list.append(Agent.Action.CLIMB)
+            return Agent.Action.GRAB
+
+        if stench or breeze:
+            return Agent.Action.CLIMB
+
+        if len(self.__self_def_action_history_list) == 0:
+            self.go_right()
+            return self.__future_action_list.pop(0)
+        else:
+            self.go_left()
+            self.__future_action_list.append(Agent.Action.CLIMB)
+            return self.__future_action_list.pop(0)
 
         # exit when goal has been finished
         if self.__complete_game:
@@ -103,6 +129,11 @@ class MyAI(Agent):
             if self.__agentY not in self.__map[self.__agentX]:
                 self.__map[self.__agentX][self.__agentY] = 1
 
+
+
+        #
+
+
         # find gold
         if glitter:
             self.__gold_looted = True
@@ -111,16 +142,7 @@ class MyAI(Agent):
             self.return_exit()
             return Agent.Action.GRAB
 
-        #
-        if stench or breeze:
-            self.__complete_game = True
-
-            self.return_exit()
-            if len(self.__future_action_list) == 0:
-                return Agent.Action.CLIMB
-            return self.__future_action_list.pop(0)
-
-        if len(self.__self_def_action_history_list)>2:
+        if len(self.__self_def_action_history_list)>10:
             self.return_exit()
             if len(self.__future_action_list) == 0:
                 return Agent.Action.CLIMB
@@ -135,7 +157,7 @@ class MyAI(Agent):
         #     self.go_right()
         # elif action == self.self_def_action.GO_LEFT.value:
         #     self.go_left()
-        self.go_right()
+
 
         return self.__future_action_list.pop(0)
         # ======================================================================
