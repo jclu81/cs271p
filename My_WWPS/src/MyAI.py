@@ -67,6 +67,7 @@ class MyAI(Agent):
         if len(self.__future_action_list) > 0:
             return self.__future_action_list.pop(0)
 
+
         # exit when goal has been finished
         if self.__complete_game:
             # agent will back to [0,0] following the shortest path
@@ -79,17 +80,21 @@ class MyAI(Agent):
             self.__world_dimension = max(self.__agentX, self.__agentY)-1
             if self.__self_def_action_history_list[-1] == self.self_def_action.GO_UP:
                 self.__agentY -= 1
-                return self.self_def_action.GO_DOWN
+                # return self.self_def_action.GO_DOWN
             elif self.__self_def_action_history_list[-1] == self.self_def_action.GO_DOWN:
                 self.__agentY += 1
-                return self.self_def_action.GO_UP
+                # return self.self_def_action.GO_UP
             elif self.__self_def_action_history_list[-1] == self.self_def_action.GO_LEFT:
                 self.__agentX += 1
-                return self.self_def_action.GO_RIGHT
+                # return self.self_def_action.GO_RIGHT
             elif self.__self_def_action_history_list[-1] == self.self_def_action.GO_RIGHT:
                 self.__agentX -= 1
-                return self.self_def_action.GO_LEFT
-
+                # return self.self_def_action.GO_LEFT
+            self.__self_def_action_history_list.pop(-1)
+            self.return_exit()
+            if len(self.__future_action_list) == 0:
+                return Agent.Action.CLIMB
+            return self.__future_action_list.pop(0)
 
 
         if not bump:
@@ -115,15 +120,22 @@ class MyAI(Agent):
                 return Agent.Action.CLIMB
             return self.__future_action_list.pop(0)
 
-        action = random.randrange(4)
-        if action == self.self_def_action.GO_UP.value:
-            self.go_up()
-        elif action == self.self_def_action.GO_DOWN.value:
-            self.go_down()
-        elif action == self.self_def_action.GO_RIGHT.value:
-            self.go_right()
-        elif action == self.self_def_action.GO_LEFT.value:
-            self.go_left()
+        if len(self.__self_def_action_history_list)>2:
+            self.return_exit()
+            if len(self.__future_action_list) == 0:
+                return Agent.Action.CLIMB
+            return self.__future_action_list.pop(0)
+
+        # action = random.randrange(4)
+        # if action == self.self_def_action.GO_UP.value:
+        #     self.go_up()
+        # elif action == self.self_def_action.GO_DOWN.value:
+        #     self.go_down()
+        # elif action == self.self_def_action.GO_RIGHT.value:
+        #     self.go_right()
+        # elif action == self.self_def_action.GO_LEFT.value:
+        #     self.go_left()
+        self.go_right()
 
         return self.__future_action_list.pop(0)
         # ======================================================================

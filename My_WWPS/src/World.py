@@ -114,6 +114,13 @@ class World():
                     
                 if self.__board[self.__agentX][self.__agentY].pit or self.__board[self.__agentX][self.__agentY].wumpus:
                     self.__score -= 1000
+                    self.__agent.getAction(
+                        self.__board[self.__agentX][self.__agentY].stench,
+                        self.__board[self.__agentX][self.__agentY].breeze,
+                        self.__board[self.__agentX][self.__agentY].gold,
+                        self.__bump,
+                        self.__scream
+                    )
                     if self.__debug:
                         self.__printWorldInfo()
                     return self.__score
