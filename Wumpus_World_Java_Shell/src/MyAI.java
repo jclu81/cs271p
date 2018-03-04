@@ -21,10 +21,11 @@ import java.util.*;
 
 public class MyAI extends Agent {
     private class Tile {
-        boolean isSafe = false;
+        boolean wumpus = true;
+        boolean pit = true;
         boolean isKnown = false;
         boolean isVisited = false;
-        int[] next = {-1, -1};
+        int[] front = {-1, -1};
 
     }
 
@@ -43,10 +44,13 @@ public class MyAI extends Agent {
     private int agentX;
     private int agentY;
     private int agentDir;
-    private int dimension;
-    private static final int[][] DIRS = {{0, 1}, {0, -1}, {-1, 0}, {1, 0}};
+    private int dimensionX;
+    private int dimensionY;
+    private static final int[][] DIRS = {{1, 0}, {0, -1}, {-1, 0}, {0, 1}};
     private Stack<int[]> stack;
+    private List<int[]> list;
     private Set<String> set;
+
 
 //    private Random rand = new Random();
 
@@ -60,9 +64,11 @@ public class MyAI extends Agent {
         agentX = 0;
         agentY = 0;
         agentDir = 0;
-        dimension = Integer.MAX_VALUE;
+        dimensionX = Integer.MAX_VALUE;
+        dimensionY = Integer.MAX_VALUE;
 
         stack = new Stack<>();
+        list = new ArrayList<>();
         set = new HashSet<>();
 
         mapOfWorld = new Tile[7][7];
@@ -71,10 +77,11 @@ public class MyAI extends Agent {
                 mapOfWorld[i][j] = new Tile();
             }
         }
-        mapOfWorld[0][0].isSafe = true;
+
         mapOfWorld[0][0].isKnown = true;
         mapOfWorld[0][0].isVisited = true;
-
+        mapOfWorld[0][0].wumpus = false;
+        mapOfWorld[0][0].pit = false;
 //        knownMap = new Integer[7][7];
 //        knownMap[0][0]=1;
 //        kbForWWP = new KbForWWP();
@@ -95,8 +102,6 @@ public class MyAI extends Agent {
         // ======================================================================
         // YOUR CODE BEGINS
         // ======================================================================
-
-
 
 
         // execute rest action of move
@@ -121,12 +126,14 @@ public class MyAI extends Agent {
                     this.agentY--;
                     break;
             }
-            if (this.agentDir == 0 || this.agentDir == 3) {
-                this.dimension = 1+Math.max(agentX, agentY);
+            if (this.agentDir == 0) {
+                this.dimensionX = 1 + agentX;
+            }
+            if (this.agentDir == 3) {
+                this.dimensionY = 1 + agentY;
             }
 
-        }
-        else {
+        } else {
             // check if node been visited
             Integer[] poz = new Integer[2];
             poz[0] = agentX;
@@ -141,34 +148,56 @@ public class MyAI extends Agent {
                 return actionList.remove(0);
             }
 
-            if (breeze || stench) {
-                //label the round poz with danger
-                labelRound(poz, false);
-//                this.backToBeginning();
-//                return actionList.remove(0);
+            if (stench) {
+                labelWumpus(poz, true);
             } else {
-                labelRound(poz, true);
+                labelWumpus(poz, false);
+            }
+
+            if (breeze) {
+                labelPit(poz, true);
+            } else {
+                labelPit(poz, false);
+            }
+
+            for (int i = 0; i < DIRS.length; i++) {
+                int x = agentX + DIRS[i][0];
+                int y = agentY + DIRS[i][1];
+                if (x >= 0 && y >= 0 && x < mapOfWorld.length && y < mapOfWorld[0].length && x < dimensionX && y < dimensionY) {
+                    if (!mapOfWorld[x][y].isVisited && !mapOfWorld[x][y].wumpus && !mapOfWorld[x][y].pit && !set.contains(String.valueOf(x) + String.valueOf(y))) {
+                        list.add(new int[]{x, y});
+                        set.add(String.valueOf(x) + String.valueOf(y));
+                    }
+                }
+
             }
         }
 
 //        // random move
 //        this.exeMove(Move.values()[rand.nextInt(Move.values().length)]);
 
-        for (int i = 0; i < DIRS.length; i++) {
-            int x = agentX + DIRS[i][0];
-            int y = agentY + DIRS[i][1];
-            if (x >= 0 && y >= 0 && x < mapOfWorld.length && y < mapOfWorld[0].length&&x<dimension&&y<dimension) {
-                if (!mapOfWorld[x][y].isVisited && mapOfWorld[x][y].isSafe &&!set.contains(String.valueOf(x)+String.valueOf(y))) {
-                    stack.push(new int[]{x, y});
-                    set.add(String.valueOf(x)+String.valueOf(y));
+
+
+
+        if (!list.isEmpty()) {
+            int tmpMin = Integer.MAX_VALUE;
+            Stack<int[]> nextMoveStack = new Stack<>();
+            int removeId = -1;
+            for (int i = 0; i < list.size(); i++) {
+                Stack<int[]> tmpStack = ucs(mapOfWorld, new int[]{agentX, agentY}, list.get(i), agentDir);
+                int cost = tmpStack.pop()[0];
+                if (cost < tmpMin) {
+                    tmpMin = cost;
+                    nextMoveStack = tmpStack;
+                    removeId = i;
                 }
             }
-
-        }
-
-        if (!stack.isEmpty()) {
-            move(new int[]{agentX,agentY},stack.pop());
-        }else {
+            if (removeId != -1) list.remove(removeId);
+            nextMoveStack.pop();
+            while (!nextMoveStack.isEmpty()) {
+                moveStep(new int[]{agentX, agentY}, nextMoveStack.pop());
+            }
+        } else {
             backToBeginning();
         }
 
@@ -217,47 +246,155 @@ public class MyAI extends Agent {
     // YOUR CODE BEGINS
     // ======================================================================
     // 计算最短路线
-    public void bfs(Tile[][] map, int[] start, int[] end) {
-        int[][] dirs = {{0, 1}, {0, -1}, {-1, 0}, {1, 0}};
-        Queue<int[]> queue = new LinkedList<>();
+//    public void bfs(Tile[][] map, int[] start, int[] end) {
+//        Queue<int[]> queue = new LinkedList<>();
+//        // {up down left right}
+//        int[][] visited = new int[map.length][map[0].length];
+//        map[end[0]][end[1]].next = new int[]{-1, -1};
+//        queue.add(end);
+//        while (!queue.isEmpty()) {
+//            int[] poz = queue.poll();
+//            visited[poz[0]][poz[1]] = 1;
+//            for (int i = 0; i < DIRS.length; i++) {
+//                int x = poz[0] + DIRS[i][0];
+//                int y = poz[1] + DIRS[i][1];
+//                if (x >= 0 && y >= 0 && x < map.length && y < map[0].length && x < dimension && y < dimension) {
+//                    if (visited[x][y] == 0 && map[x][y].isSafe) {
+//                        if (x == start[0] && y == start[1]) {
+//                            map[x][y].next = poz;
+//                            return;
+//                        }
+//                        queue.add(new int[]{x, y});
+//                        map[x][y].next = poz;
+//                    }
+//                }
+//
+//            }
+//        }
+//    }
+    public void backToBeginning() {
+//        List<Move> tmp = new ArrayList<>(this.historyList);
+//        while ((this.agentX != 0 || this.agentY != 0) && !tmp.isEmpty()) {
+//            Move move = tmp.remove(tmp.size() - 1);
+//            move = Move.values()[(move.ordinal() + 2) % 4];
+//            this.exeMove(move);
+//        }
+//        this.actionList.add(Action.CLIMB);
+//        bfs(mapOfWorld, new Integer[]{0, 0}, new Integer[]{agentX, agentY});
+//        int i = agentX;
+//        int j = agentY;
+//        Integer[] poz;
+//        poz = mapOfWorld[i][j].front;
+//        while (poz[0] != -1 && poz[1] != -1) {
+//            moveStep(new Integer[]{agentX, agentY}, poz);
+//            poz = mapOfWorld[poz[0]][poz[1]].front;
+//        }
+        move(new int[]{agentX, agentY}, new int[]{0, 0}, agentDir);
+        this.actionList.add(Action.CLIMB);
+    }
+
+
+    public Stack<int[]> ucs(Tile[][] map, int[] start, int[] end, int agentDir) {
+
+        PriorityQueue<int[]> queue = new PriorityQueue<>(costComparator);
         // {up down left right}
         int[][] visited = new int[map.length][map[0].length];
-        map[end[0]][end[1]].next = new int[]{-1,-1};
-        queue.add(end);
+        map[start[0]][start[1]].front = new int[]{-1, -1};
+        int[] tmpStart = new int[4];
+        tmpStart[0] = start[0];
+        tmpStart[1] = start[1];
+        tmpStart[2] = 0;
+        tmpStart[3] = agentDir;
+
+
+        queue.add(tmpStart);
         while (!queue.isEmpty()) {
             int[] poz = queue.poll();
-            visited[poz[0]][poz[1]]=1;
-            for (int i = 0; i < dirs.length; i++) {
-                int x = poz[0] + dirs[i][0];
-                int y = poz[1] + dirs[i][1];
-                if (x >= 0 && y >= 0 && x < map.length && y < map[0].length&&x<dimension&&y<dimension) {
-                    if (visited[x][y] == 0 && map[x][y].isSafe) {
-                        if (x == start[0] && y == start[1]) {
-                            map[x][y].next = poz;
-                            return;
-                        }
-                        queue.add(new int[]{x, y});
-                        map[x][y].next = poz;
+            if (poz[0] == end[0] && poz[1] == end[1]) {
+                Stack<int[]> stack = new Stack<>();
+                int[] tmpPoz = poz;
+                int cost = poz[2];
+                while (tmpPoz[0] != -1 && tmpPoz[1] != -1) {
+                    stack.push(tmpPoz);
+                    tmpPoz = mapOfWorld[tmpPoz[0]][tmpPoz[1]].front;
+                }
+                stack.push(new int[]{cost});
+                return stack;
+            }
+            visited[poz[0]][poz[1]] = 1;
+            for (int i = 0; i < DIRS.length; i++) {
+                int x = poz[0] + DIRS[i][0];
+                int y = poz[1] + DIRS[i][1];
+                if (x >= 0 && y >= 0 && x < map.length && y < map[0].length && x < dimensionX && y < dimensionY) {
+                    if (visited[x][y] == 0 && !map[x][y].wumpus && !map[x][y].pit) {
+                        queue.add(new int[]{x, y, poz[2] + calStepCost(i, poz[3]), i});
+                        map[x][y].front = poz;
                     }
+                }
+
+            }
+        }
+        return null;
+    }
+
+
+    public int calStepCost(int dir, int agentDir) {
+        // {{0, 1}up,3 {0, -1}down,1 {-1, 0}left,2 {1, 0}right,0};
+        switch (Math.abs(dir - agentDir)) {
+            case 0:
+                return 1;
+            case 1:
+                return 2;
+            case 2:
+                return 3;
+            case 3:
+                return 2;
+        }
+        return 0;
+    }
+
+    public static Comparator<int[]> costComparator = new Comparator<int[]>() {
+        @Override
+        public int compare(int[] c1, int[] c2) {
+            if (c1[2] > c2[2]) return 1;
+            else if (c1[2] < c2[2]) return -1;
+            return 0;
+        }
+    };
+
+    public void labelPit(Integer[] poz, boolean pit) {
+        for (int i = 0; i < DIRS.length; i++) {
+            int x = poz[0] + DIRS[i][0];
+            int y = poz[1] + DIRS[i][1];
+
+            if (x >= 0 && y >= 0 && x < mapOfWorld.length && y < mapOfWorld[0].length && x < dimensionX && y < dimensionY) {
+
+                if (!mapOfWorld[x][y].isKnown) {
+                    mapOfWorld[x][y].pit = pit;
+                    mapOfWorld[x][y].isKnown = true;
+                } else if (!pit) {
+                    mapOfWorld[x][y].pit = pit;
                 }
 
             }
         }
     }
 
-
-    public void labelRound(Integer[] poz, boolean isSafe) {
+    public void labelWumpus(Integer[] poz, boolean wumpus) {
         for (int i = 0; i < DIRS.length; i++) {
             int x = poz[0] + DIRS[i][0];
             int y = poz[1] + DIRS[i][1];
 
-            if (x >= 0 && y >= 0 && x < mapOfWorld.length && y < mapOfWorld[0].length&&x<dimension&&y<dimension) {
-
-                if (!mapOfWorld[x][y].isKnown) {
-                    mapOfWorld[x][y].isSafe = isSafe;
-                    mapOfWorld[x][y].isKnown = true;
-                } else if (isSafe) {
-                    mapOfWorld[x][y].isSafe = isSafe;
+            if (x >= 0 && y >= 0 && x < mapOfWorld.length && y < mapOfWorld[0].length && x < dimensionX && y < dimensionY) {
+                if (!wumpus) {
+                    mapOfWorld[x][y].wumpus = wumpus;
+                }else {
+                    if (!mapOfWorld[x][y].isKnown) {
+                        mapOfWorld[x][y].wumpus = wumpus;
+                        mapOfWorld[x][y].isKnown = true;
+                    } else {
+                        
+                    }
                 }
 
             }
@@ -282,34 +419,13 @@ public class MyAI extends Agent {
         }
     }
 
-    public void backToBeginning() {
-//        List<Move> tmp = new ArrayList<>(this.historyList);
-//        while ((this.agentX != 0 || this.agentY != 0) && !tmp.isEmpty()) {
-//            Move move = tmp.remove(tmp.size() - 1);
-//            move = Move.values()[(move.ordinal() + 2) % 4];
-//            this.exeMove(move);
-//        }
-//        this.actionList.add(Action.CLIMB);
-//        bfs(mapOfWorld, new Integer[]{0, 0}, new Integer[]{agentX, agentY});
-//        int i = agentX;
-//        int j = agentY;
-//        Integer[] poz;
-//        poz = mapOfWorld[i][j].front;
-//        while (poz[0] != -1 && poz[1] != -1) {
-//            moveStep(new Integer[]{agentX, agentY}, poz);
-//            poz = mapOfWorld[poz[0]][poz[1]].front;
-//        }
-        move(new int[]{agentX,agentY},new int[]{0,0});
-        this.actionList.add(Action.CLIMB);
-    }
 
-    public void move(int[] start, int[] end) {
-        bfs(mapOfWorld, start, end);
-        int[] poz;
-        poz = mapOfWorld[start[0]][start[1]].next;
-        while (poz[0] != -1 && poz[1] != -1) {
-            moveStep(new int[]{agentX, agentY}, poz);
-            poz = mapOfWorld[poz[0]][poz[1]].next;
+    public void move(int[] start, int[] end, int agentDir) {
+
+        Stack<int[]> stack = ucs(mapOfWorld, start, end, agentDir);
+        stack.pop();
+        while (!stack.isEmpty()) {
+            moveStep(new int[]{agentX, agentY}, stack.pop());
         }
     }
 
