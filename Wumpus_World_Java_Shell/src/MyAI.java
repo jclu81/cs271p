@@ -50,9 +50,8 @@ public class MyAI extends Agent {
     private Stack<int[]> stack;
     private List<int[]> list;
     private Set<String> set;
+    private static final int MAX_DIMENTION = 7;
 
-
-//    private Random rand = new Random();
 
     public MyAI() {
         // ======================================================================
@@ -71,9 +70,9 @@ public class MyAI extends Agent {
         list = new ArrayList<>();
         set = new HashSet<>();
 
-        mapOfWorld = new Tile[7][7];
-        for (int i = 0; i < 7; i++) {
-            for (int j = 0; j < 7; j++) {
+        mapOfWorld = new Tile[MAX_DIMENTION][MAX_DIMENTION];
+        for (int i = 0; i < MAX_DIMENTION; i++) {
+            for (int j = 0; j < MAX_DIMENTION; j++) {
                 mapOfWorld[i][j] = new Tile();
             }
         }
@@ -82,10 +81,7 @@ public class MyAI extends Agent {
         mapOfWorld[0][0].isVisited = true;
         mapOfWorld[0][0].wumpus = false;
         mapOfWorld[0][0].pit = false;
-//        knownMap = new Integer[7][7];
-//        knownMap[0][0]=1;
-//        kbForWWP = new KbForWWP();
-//        kbForWWP.add("not(B[0,0])","not(S[0,0])","not(W[0,0])","not()");
+
         // ======================================================================
         // YOUR CODE ENDS
         // ======================================================================
@@ -173,18 +169,15 @@ public class MyAI extends Agent {
             }
         }
 
-//        // random move
-//        this.exeMove(Move.values()[rand.nextInt(Move.values().length)]);
-
-
-
-
         if (!list.isEmpty()) {
             int tmpMin = Integer.MAX_VALUE;
             Stack<int[]> nextMoveStack = new Stack<>();
             int removeId = -1;
             for (int i = 0; i < list.size(); i++) {
                 Stack<int[]> tmpStack = ucs(mapOfWorld, new int[]{agentX, agentY}, list.get(i), agentDir);
+                if(tmpStack==null){
+                    continue;
+                }
                 int cost = tmpStack.pop()[0];
                 if (cost < tmpMin) {
                     tmpMin = cost;
@@ -192,10 +185,14 @@ public class MyAI extends Agent {
                     removeId = i;
                 }
             }
-            if (removeId != -1) list.remove(removeId);
-            nextMoveStack.pop();
-            while (!nextMoveStack.isEmpty()) {
-                moveStep(new int[]{agentX, agentY}, nextMoveStack.pop());
+            if (removeId != -1) {
+                list.remove(removeId);
+                nextMoveStack.pop();
+                while (!nextMoveStack.isEmpty()) {
+                    moveStep(new int[]{agentX, agentY}, nextMoveStack.pop());
+                }
+            }else {
+                backToBeginning();
             }
         } else {
             backToBeginning();
@@ -203,38 +200,6 @@ public class MyAI extends Agent {
 
 
         return actionList.remove(0);
-
-//        // Print Command Menu
-//        System.out.println("Press 'w' to Move Forward  'a' to 'Turn Left' 'd' to 'Turn Right'");
-//        System.out.println("Press 's' to Shoot         'g' to 'Grab'      'c' to 'Climb'");
-//
-//        Scanner in = new Scanner(System.in);
-//        // Get Input
-//        System.out.print("Please input: ");
-//        String userInput = in.next();
-//
-//        // Return Action Associated with Input
-//        if (userInput.charAt(0) == 'w') {
-//            this.moveUp();
-//            return actionList.remove(0);
-//        }
-//        if (userInput.charAt(0) == 'a') {
-//            this.moveLeft();
-//            return actionList.remove(0);
-//        }
-//        if (userInput.charAt(0) == 'd') {
-//            this.moveRight();
-//            return actionList.remove(0);
-//        }
-//        if (userInput.charAt(0) == 's') {
-//            this.moveDown();
-//            return actionList.remove(0);
-//        }
-//        if (userInput.charAt(0) == 'b') {
-//            this.backToBeginning();
-//            return actionList.remove(0);
-//        }
-//        return Action.CLIMB;
 
         // ======================================================================
         // YOUR CODE ENDS
@@ -245,7 +210,6 @@ public class MyAI extends Agent {
     // ======================================================================
     // YOUR CODE BEGINS
     // ======================================================================
-    // 计算最短路线
 //    public void bfs(Tile[][] map, int[] start, int[] end) {
 //        Queue<int[]> queue = new LinkedList<>();
 //        // {up down left right}
@@ -273,22 +237,6 @@ public class MyAI extends Agent {
 //        }
 //    }
     public void backToBeginning() {
-//        List<Move> tmp = new ArrayList<>(this.historyList);
-//        while ((this.agentX != 0 || this.agentY != 0) && !tmp.isEmpty()) {
-//            Move move = tmp.remove(tmp.size() - 1);
-//            move = Move.values()[(move.ordinal() + 2) % 4];
-//            this.exeMove(move);
-//        }
-//        this.actionList.add(Action.CLIMB);
-//        bfs(mapOfWorld, new Integer[]{0, 0}, new Integer[]{agentX, agentY});
-//        int i = agentX;
-//        int j = agentY;
-//        Integer[] poz;
-//        poz = mapOfWorld[i][j].front;
-//        while (poz[0] != -1 && poz[1] != -1) {
-//            moveStep(new Integer[]{agentX, agentY}, poz);
-//            poz = mapOfWorld[poz[0]][poz[1]].front;
-//        }
         move(new int[]{agentX, agentY}, new int[]{0, 0}, agentDir);
         this.actionList.add(Action.CLIMB);
     }
@@ -296,7 +244,7 @@ public class MyAI extends Agent {
 
     public Stack<int[]> ucs(Tile[][] map, int[] start, int[] end, int agentDir) {
 
-        PriorityQueue<int[]> queue = new PriorityQueue<>(costComparator);
+        PriorityQueue<int[]> queue = new PriorityQueue<>(MAX_DIMENTION,costComparator);
         // {up down left right}
         int[][] visited = new int[map.length][map[0].length];
         map[start[0]][start[1]].front = new int[]{-1, -1};
@@ -386,15 +334,12 @@ public class MyAI extends Agent {
             int y = poz[1] + DIRS[i][1];
 
             if (x >= 0 && y >= 0 && x < mapOfWorld.length && y < mapOfWorld[0].length && x < dimensionX && y < dimensionY) {
-                if (!wumpus) {
+
+                if (!mapOfWorld[x][y].isKnown) {
                     mapOfWorld[x][y].wumpus = wumpus;
-                }else {
-                    if (!mapOfWorld[x][y].isKnown) {
-                        mapOfWorld[x][y].wumpus = wumpus;
-                        mapOfWorld[x][y].isKnown = true;
-                    } else {
-                        
-                    }
+                    mapOfWorld[x][y].isKnown = true;
+                } else if (!wumpus) {
+                    mapOfWorld[x][y].wumpus = wumpus;
                 }
 
             }
